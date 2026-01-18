@@ -23,6 +23,18 @@ function getFirebaseApp(): App {
     let privateKey = process.env.FB_PRIVATE_KEY;
 
     if (privateKey) {
+        // Base64エンコードされているかチェック（-----BEGINで始まらない、かつ改行がない場合など）
+        if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+            try {
+                const decoded = Buffer.from(privateKey, 'base64').toString('utf-8');
+                if (decoded.includes('-----BEGIN PRIVATE KEY-----')) {
+                    privateKey = decoded;
+                }
+            } catch (e) {
+                console.warn('Failed to decode private key as base64', e);
+            }
+        }
+
         // ダブルクォートで囲まれている場合を考慮
         if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
             privateKey = privateKey.slice(1, -1);
