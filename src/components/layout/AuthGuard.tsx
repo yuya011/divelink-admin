@@ -11,7 +11,7 @@ interface AuthGuardProps {
     requiredRole?: 'moderator' | 'admin' | 'super_admin';
 }
 
-export default function AuthGuard({
+export function AuthGuard({
     children,
     requireAuth = true,
     requiredRole
