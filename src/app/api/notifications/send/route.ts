@@ -83,22 +83,33 @@ export async function POST(request: Request) {
                     messageId: response,
                     status: 'sent', // 念のため
                 });
-            } catch (fcmError) {
+            } catch (fcmError: any) {
                 console.error('Error sending FCM message:', fcmError);
                 await docRef.update({
                     status: 'failed',
                     error: fcmError instanceof Error ? fcmError.message : 'Unknown error',
                 });
-                throw fcmError;
+
+                return NextResponse.json(
+                    {
+                        error: 'Failed to send notification via FCM',
+                        details: fcmError.message || 'Unknown FCM error',
+                        code: fcmError.code
+                    },
+                    { status: 500 }
+                );
             }
         }
 
         return NextResponse.json({ success: true, id: docRef.id });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Failed to process notification:', error);
         return NextResponse.json(
-            { error: 'Failed to process notification' },
+            {
+                error: 'Internal Server Error',
+                details: error.message
+            },
             { status: 500 }
         );
     }
