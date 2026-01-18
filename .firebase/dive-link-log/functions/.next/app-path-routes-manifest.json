@@ -1,0 +1,18 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/analytics/page": "/analytics",
+  "/api/auth/login/route": "/api/auth/login",
+  "/api/auth/logout/route": "/api/auth/logout",
+  "/api/auth/me/route": "/api/auth/me",
+  "/api/debug/env/route": "/api/debug/env",
+  "/favicon.ico/route": "/favicon.ico",
+  "/login/page": "/login",
+  "/notifications/page": "/notifications",
+  "/page": "/",
+  "/reports/page": "/reports",
+  "/settings/page": "/settings",
+  "/shops/page": "/shops",
+  "/support/page": "/support",
+  "/users/page": "/users"
+}
