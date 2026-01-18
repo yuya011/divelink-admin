@@ -92,6 +92,16 @@ export function getMessagingAdmin(): Messaging {
     return messaging;
 }
 
+export function getFirebaseAdmin() {
+    const app = getFirebaseApp();
+    return {
+        app,
+        db: getFirestoreAdmin(),
+        auth: getAuthAdmin(),
+        messaging: getMessagingAdmin(),
+    };
+}
+
 // コレクション名定数
 export const COLLECTIONS = {
     USERS: 'users',

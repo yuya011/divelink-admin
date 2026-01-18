@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { AuthGuard } from '@/components/layout/AuthGuard';
@@ -26,56 +26,50 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Clock, Check, X, Eye, MapPin, Building2 } from 'lucide-react';
+import { Clock, Check, X, Eye, MapPin, Building2, Loader2, RefreshCw } from 'lucide-react';
 
-// サンプルデータ
-const sampleApplications = [
-    {
-        id: '1',
-        userId: 'user_123',
-        userName: '田中太郎',
-        userEmail: 'tanaka@example.com',
-        shopName: 'ダイビングショップ サンシャイン',
-        address: '沖縄県那覇市牧志1-2-3',
-        region: '沖縄',
-        description: '沖縄本島でのダイビングツアーを提供しています。初心者から上級者まで対応。',
-        status: 'pending' as const,
-        createdAt: '2026-01-18',
-    },
-    {
-        id: '2',
-        userId: 'user_456',
-        userName: '佐藤花子',
-        userEmail: 'sato@example.com',
-        shopName: 'ブルーダイブ伊豆',
-        address: '静岡県伊東市宇佐美1-2-3',
-        region: '伊豆',
-        description: '伊豆半島でのダイビングスクールとファンダイブを運営。',
-        status: 'pending' as const,
-        createdAt: '2026-01-17',
-    },
-    {
-        id: '3',
-        userId: 'user_789',
-        userName: '鈴木一郎',
-        userEmail: 'suzuki@example.com',
-        shopName: 'マリンハウス石垣',
-        address: '沖縄県石垣市美崎町1-2-3',
-        region: '石垣島',
-        description: '石垣島でのマンタポイントへのダイビングツアーが人気。',
-        status: 'approved' as const,
-        createdAt: '2026-01-15',
-    },
-];
+interface ShopApplication {
+    id: string;
+    userId: string;
+    userName: string;
+    userEmail: string;
+    shopName: string;
+    address: string;
+    region: string;
+    description: string;
+    status: 'pending' | 'approved' | 'rejected';
+    createdAt: string;
+}
 
 export default function ShopsPage() {
+    const [applications, setApplications] = useState<ShopApplication[]>([]);
+    const [loading, setLoading] = useState(true);
     const [selectedTab, setSelectedTab] = useState('pending');
-    const [selectedApplication, setSelectedApplication] = useState<typeof sampleApplications[0] | null>(null);
+    const [selectedApplication, setSelectedApplication] = useState<ShopApplication | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [isRejectOpen, setIsRejectOpen] = useState(false);
     const [rejectReason, setRejectReason] = useState('');
+    const [processingId, setProcessingId] = useState<string | null>(null);
 
-    const filteredApplications = sampleApplications.filter((app) => {
+    const fetchApplications = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch('/api/shops');
+            if (!res.ok) throw new Error('Failed to fetch');
+            const data = await res.json();
+            setApplications(data);
+        } catch (error) {
+            console.error('Error fetching applications:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchApplications();
+    }, []);
+
+    const filteredApplications = applications.filter((app) => {
         if (selectedTab === 'all') return true;
         return app.status === selectedTab;
     });
@@ -93,15 +87,34 @@ export default function ShopsPage() {
         }
     };
 
-    const handleViewDetail = (application: typeof sampleApplications[0]) => {
+    const handleViewDetail = (application: ShopApplication) => {
         setSelectedApplication(application);
         setIsDetailOpen(true);
     };
 
-    const handleApprove = () => {
-        // TODO: API呼び出し
-        console.log('Approving:', selectedApplication?.id);
-        setIsDetailOpen(false);
+    const handleApprove = async () => {
+        if (!selectedApplication) return;
+        setProcessingId(selectedApplication.id);
+
+        try {
+            const res = await fetch(`/api/shops/${selectedApplication.id}/approve`, {
+                method: 'POST',
+            });
+
+            if (!res.ok) throw new Error('Failed to approve');
+
+            // ローカルステート更新
+            setApplications(prev => prev.map(app =>
+                app.id === selectedApplication.id ? { ...app, status: 'approved' } : app
+            ));
+
+            setIsDetailOpen(false);
+        } catch (error) {
+            console.error('Error approving:', error);
+            alert('承認処理に失敗しました');
+        } finally {
+            setProcessingId(null);
+        }
     };
 
     const handleReject = () => {
@@ -109,11 +122,32 @@ export default function ShopsPage() {
         setIsRejectOpen(true);
     };
 
-    const confirmReject = () => {
-        // TODO: API呼び出し
-        console.log('Rejecting:', selectedApplication?.id, rejectReason);
-        setIsRejectOpen(false);
-        setRejectReason('');
+    const confirmReject = async () => {
+        if (!selectedApplication) return;
+        setProcessingId(selectedApplication.id);
+
+        try {
+            const res = await fetch(`/api/shops/${selectedApplication.id}/reject`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: rejectReason }),
+            });
+
+            if (!res.ok) throw new Error('Failed to reject');
+
+            // ローカルステート更新
+            setApplications(prev => prev.map(app =>
+                app.id === selectedApplication.id ? { ...app, status: 'rejected' } : app
+            ));
+
+            setIsRejectOpen(false);
+            setRejectReason('');
+        } catch (error) {
+            console.error('Error rejecting:', error);
+            alert('却下処理に失敗しました');
+        } finally {
+            setProcessingId(null);
+        }
     };
 
     return (
@@ -124,13 +158,18 @@ export default function ShopsPage() {
 
                 <main className="ml-64 pt-16">
                     <div className="p-6">
-                        <div className="mb-8">
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                ショップ管理
-                            </h2>
-                            <p className="mt-1 text-sm text-gray-500">
-                                ショップ登録申請の確認と承認を行います
-                            </p>
+                        <div className="mb-8 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                    ショップ管理
+                                </h2>
+                                <p className="mt-1 text-sm text-gray-500">
+                                    ショップ登録申請の確認と承認を行います
+                                </p>
+                            </div>
+                            <Button variant="outline" size="icon" onClick={fetchApplications} disabled={loading}>
+                                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                            </Button>
                         </div>
 
                         <Card className="p-6">
@@ -139,7 +178,7 @@ export default function ShopsPage() {
                                     <TabsTrigger value="pending">
                                         保留中
                                         <Badge variant="secondary" className="ml-2">
-                                            {sampleApplications.filter(a => a.status === 'pending').length}
+                                            {applications.filter(a => a.status === 'pending').length}
                                         </Badge>
                                     </TabsTrigger>
                                     <TabsTrigger value="approved">承認済み</TabsTrigger>
@@ -148,49 +187,59 @@ export default function ShopsPage() {
                                 </TabsList>
 
                                 <TabsContent value={selectedTab}>
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>ショップ名</TableHead>
-                                                <TableHead>申請者</TableHead>
-                                                <TableHead>地域</TableHead>
-                                                <TableHead>申請日</TableHead>
-                                                <TableHead>ステータス</TableHead>
-                                                <TableHead className="text-right">アクション</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {filteredApplications.map((app) => (
-                                                <TableRow key={app.id}>
-                                                    <TableCell className="font-medium">{app.shopName}</TableCell>
-                                                    <TableCell>
-                                                        <div>
-                                                            <p className="text-sm">{app.userName}</p>
-                                                            <p className="text-xs text-gray-500">{app.userEmail}</p>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-1">
-                                                            <MapPin className="h-4 w-4 text-gray-400" />
-                                                            {app.region}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>{app.createdAt}</TableCell>
-                                                    <TableCell>{getStatusBadge(app.status)}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => handleViewDetail(app)}
-                                                        >
-                                                            <Eye className="mr-1 h-4 w-4" />
-                                                            詳細
-                                                        </Button>
-                                                    </TableCell>
+                                    {loading && applications.length === 0 ? (
+                                        <div className="flex h-40 items-center justify-center">
+                                            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                                        </div>
+                                    ) : filteredApplications.length === 0 ? (
+                                        <div className="flex h-40 items-center justify-center text-gray-500">
+                                            データがありません
+                                        </div>
+                                    ) : (
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>ショップ名</TableHead>
+                                                    <TableHead>申請者</TableHead>
+                                                    <TableHead>地域</TableHead>
+                                                    <TableHead>申請日</TableHead>
+                                                    <TableHead>ステータス</TableHead>
+                                                    <TableHead className="text-right">アクション</TableHead>
                                                 </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {filteredApplications.map((app) => (
+                                                    <TableRow key={app.id}>
+                                                        <TableCell className="font-medium">{app.shopName}</TableCell>
+                                                        <TableCell>
+                                                            <div>
+                                                                <p className="text-sm">{app.userName}</p>
+                                                                <p className="text-xs text-gray-500">{app.userEmail}</p>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="flex items-center gap-1">
+                                                                <MapPin className="h-4 w-4 text-gray-400" />
+                                                                {app.region}
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>{app.createdAt}</TableCell>
+                                                        <TableCell>{getStatusBadge(app.status)}</TableCell>
+                                                        <TableCell className="text-right">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleViewDetail(app)}
+                                                            >
+                                                                <Eye className="mr-1 h-4 w-4" />
+                                                                詳細
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    )}
                                 </TabsContent>
                             </Tabs>
                         </Card>
@@ -238,12 +287,20 @@ export default function ShopsPage() {
 
                         {selectedApplication?.status === 'pending' && (
                             <DialogFooter className="gap-2">
-                                <Button variant="outline" onClick={handleReject}>
+                                <Button variant="outline" onClick={handleReject} disabled={!!processingId}>
                                     <X className="mr-1 h-4 w-4" />
                                     却下
                                 </Button>
-                                <Button onClick={handleApprove} className="bg-green-600 hover:bg-green-700">
-                                    <Check className="mr-1 h-4 w-4" />
+                                <Button
+                                    onClick={handleApprove}
+                                    className="bg-green-600 hover:bg-green-700"
+                                    disabled={!!processingId}
+                                >
+                                    {processingId === selectedApplication?.id ? (
+                                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Check className="mr-1 h-4 w-4" />
+                                    )}
                                     承認
                                 </Button>
                             </DialogFooter>
@@ -269,10 +326,13 @@ export default function ShopsPage() {
                             />
                         </div>
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsRejectOpen(false)}>
+                            <Button variant="outline" onClick={() => setIsRejectOpen(false)} disabled={!!processingId}>
                                 キャンセル
                             </Button>
-                            <Button variant="destructive" onClick={confirmReject}>
+                            <Button variant="destructive" onClick={confirmReject} disabled={!!processingId || !rejectReason}>
+                                {processingId === selectedApplication?.id && (
+                                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                                )}
                                 却下を確定
                             </Button>
                         </DialogFooter>
