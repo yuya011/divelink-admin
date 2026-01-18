@@ -22,7 +22,7 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
-            await login(email, password);
+            await login();
             router.push('/');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'ログインに失敗しました');
