@@ -89,6 +89,32 @@ export async function POST() {
             }
         ];
 
+        // ダミーユーザー
+        const users = [
+            {
+                uid: 'user_dummy_001',
+                email: 'dummy.user1@example.com',
+                name: '鈴木 テスト',
+                rank: 'OWD',
+                organization: 'PADI',
+                totalLogs: 15,
+                createdAt: new Date(),
+                isShopStaff: false,
+                isBanned: false,
+            },
+            {
+                uid: 'user_dummy_002',
+                email: 'dummy.user2@example.com',
+                name: '佐藤 ダイブ',
+                rank: 'AOW',
+                organization: 'SSI',
+                totalLogs: 120,
+                createdAt: new Date(Date.now() - 100000000),
+                isShopStaff: true,
+                isBanned: false,
+            }
+        ];
+
         // データの投入
         const batch = db.batch();
 
@@ -105,6 +131,13 @@ export async function POST() {
         tickets.forEach(data => {
             const ref = db.collection(COLLECTIONS.SUPPORT_TICKETS).doc();
             batch.set(ref, data);
+        });
+
+        users.forEach(data => {
+            // UIDを指定してドキュメント作成
+            const { uid, ...userData } = data;
+            const ref = db.collection(COLLECTIONS.USERS).doc(uid);
+            batch.set(ref, userData, { merge: true });
         });
 
         await batch.commit();
