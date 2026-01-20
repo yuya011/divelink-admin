@@ -5,4 +5,19 @@ runConfig:
   maxInstances: 10
   concurrency: 80
 
-environmentalVariables: [] # コンソールで設定するため空にしておきます
+env:
+  - variable: FB_PROJECT_ID
+    value: dive-link-log
+  - variable: FB_CLIENT_EMAIL
+    value: firebase-adminsdk-fbsvc@dive-link-log.iam.gserviceaccount.com
+  - variable: NEXTAUTH_URL
+    value: https://divelink-admin--dive-link-log.asia-southeast1.hosted.app
+  - variable: AUTH_TRUST_HOST
+    value: "true"
+
+secrets:
+  - variable: FB_PRIVATE_KEY
+    secret: fbPrivateKey
+  - variable: NEXTAUTH_SECRET
+    secret: nextauthSecret
+
