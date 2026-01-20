@@ -95,7 +95,11 @@ export default function NotificationsClient({ initialHistory }: NotificationsCli
                 body: JSON.stringify(payload),
             });
 
-            if (!res.ok) throw new Error('送信に失敗しました');
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                console.error('API Error Details:', errorData);
+                throw new Error(errorData.details || errorData.error || '送信に失敗しました');
+            }
 
             alert(scheduleType === 'now' ? '通知を送信しました' : '配信予約しました');
 
@@ -111,9 +115,9 @@ export default function NotificationsClient({ initialHistory }: NotificationsCli
             router.refresh(); // 履歴更新
 
             // タブを履歴に切り替えるなどのUXも考えられるが、一旦そのまま
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error sending notification:', error);
-            alert('送信中にエラーが発生しました');
+            alert(`送信エラー: ${error.message}`);
         } finally {
             setIsSending(false);
         }
